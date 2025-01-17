@@ -65,7 +65,7 @@ cp \$WORKDIR/OUTCAR \$SLURM_SUBMIT_DIR/Outs/$NB.OUTCAR
 
 cd \$SLURM_SUBMIT_DIR/
 
-#rm -r \$WORKDIR
+rm -r \$WORKDIR
 
 
 #-------------------------------------------------------------

@@ -328,7 +328,7 @@ def Generate_POSCAR(POPULATION,ENS_FOLDER,PREFIX):
 
             atm_t = []
             atm_n = []
-            atom_ordering = []
+            atom_ordering = [None]*(file_lenght-6)
             atm_t.append(structure_lines[6].split()[0])
             atm_n.append(1)
 
@@ -350,18 +350,20 @@ def Generate_POSCAR(POPULATION,ENS_FOLDER,PREFIX):
 
 
 
-
+            count_n = 0
             for i in atm_t:
                 for j in range(6,file_lenght):
                     if i == structure_lines[j].split()[0]:
                         f.write(structure_lines[j].split()[1] + str("  ") + structure_lines[j].split()[2] + str("  ") + structure_lines[j].split()[3] + str("\n"))
-                        atom_ordering.append(j-6)
+                        atom_ordering[j-6] = count_n
+                        count_n += 1
+
             # Write the content on the espresso_run_X.pwi file
             # Note in the files we specify the units for both the cell and the structure [Angstrom]
         f.close()
     return atom_ordering
 
-def read_SCF(POPULATION,ENS_FOLDER,PREFIX,N_RANDOM,atom_ordering):
+def read_SCF(POPULATION,ENS_FOLDER,PREFIX,N_RANDOM):
     directory = "scfin"
     output_filenames = [f for f in os.listdir(directory) if f.endswith(".out")] # We select only the output files
     output_files = [os.path.join(directory, f) for f in output_filenames] # We add the directory/outpufilename to load them correctly
@@ -392,7 +394,7 @@ def read_SCF(POPULATION,ENS_FOLDER,PREFIX,N_RANDOM,atom_ordering):
         forces = np.zeros((nat, 3))
         forces_lines = [l for l in lines if len(l) > 0 if l.split()[0] == "atom"] # All the lines that starts with atom will contain a force
         for i in range(nat):
-            forces[i, :] = [float(x) for x in forces_lines[saved_ordering[i]].split()[-3:]] # Get the last three number from the line containing the force
+            forces[i, :] = [float(x) for x in forces_lines[i].split()[-3:]] # Get the last three number from the line containing the force
         
         # Now we can take the stress tensor
         stress = np.zeros((3,3))
@@ -420,7 +422,7 @@ def read_SCF(POPULATION,ENS_FOLDER,PREFIX,N_RANDOM,atom_ordering):
 
 
 
-def read_OUTCAR(POPULATION,ENS_FOLDER,PREFIX,N_RANDOM):
+def read_OUTCAR(POPULATION,ENS_FOLDER,PREFIX,N_RANDOM,saved_ordering):
     directory = "scfin"
     output_filenames = [f for f in os.listdir(directory) if f.endswith("OUTCAR")] # We select only the output files
     output_files = [os.path.join(directory, f) for f in output_filenames] # We add the directory/outpufilename to load them correctly
@@ -463,23 +465,23 @@ def read_OUTCAR(POPULATION,ENS_FOLDER,PREFIX,N_RANDOM):
                 if lines[i].split()[0] == "in" and lines[i].split()[1] == "kB": index_before_stress = lines[i]
 
 
-
+        print(saved_ordering)
         for i in range(nat):
-            forces[i, :] = [float(x)*0.0734985857*0.5029177210544 for x in force_lines[i].split()[-3:]] # Get the last three number from the line containing the force
+            forces[i, :] = [float(x)*0.0734985857*0.5029177210544 for x in force_lines[saved_ordering[i]].split()[-3:]] # Get the last three number from the line containing the force
 
 
         # Now we can take the stress tensor
         stress = np.zeros((3,3))
         # We pick the index of the line that starts with the words total stress
         # The stress tensor is located just after it
-        stress[0,0] = float(index_before_stress.split()[2])/10*math.pow(10,9)*math.pow(10,30)/1.60217663*math.pow(10,19)*0.0734985857*math.pow(0.5291772105,3)
-        stress[1,1] = float(index_before_stress.split()[3])/10*math.pow(10,9)*math.pow(10,30)/1.60217663*math.pow(10,19)*0.0734985857*math.pow(0.5291772105,3) 
-        stress[2,2] = float(index_before_stress.split()[4])/10*math.pow(10,9)*math.pow(10,30)/1.60217663*math.pow(10,19)*0.0734985857*math.pow(0.5291772105,3)
-        stress[0,1] = float(index_before_stress.split()[5])/10*math.pow(10,9)*math.pow(10,30)/1.60217663*math.pow(10,19)*0.0734985857*math.pow(0.5291772105,3)
-        stress[1,0] = float(index_before_stress.split()[5])/10*math.pow(10,9)*math.pow(10,30)/1.60217663*math.pow(10,19)*0.0734985857*math.pow(0.5291772105,3)
-        stress[0,2] = float(index_before_stress.split()[6])/10*math.pow(10,9)*math.pow(10,30)/1.60217663*math.pow(10,19)*0.0734985857*math.pow(0.5291772105,3)
-        stress[2,1] = float(index_before_stress.split()[7])/10*math.pow(10,9)*math.pow(10,30)/1.60217663*math.pow(10,19)*0.0734985857*math.pow(0.5291772105,3)
-        stress[1,2] = float(index_before_stress.split()[7])/10*math.pow(10,9)*math.pow(10,30)/1.60217663*math.pow(10,19)*0.0734985857*math.pow(0.5291772105,3)
+        stress[0,0] = float(index_before_stress.split()[2])/10*math.pow(10,9)/math.pow(10,30)/1.60217663*math.pow(10,19)*0.0734985857*math.pow(0.5291772105,3)
+        stress[1,1] = float(index_before_stress.split()[3])/10*math.pow(10,9)/math.pow(10,30)/1.60217663*math.pow(10,19)*0.0734985857*math.pow(0.5291772105,3) 
+        stress[2,2] = float(index_before_stress.split()[4])/10*math.pow(10,9)/math.pow(10,30)/1.60217663*math.pow(10,19)*0.0734985857*math.pow(0.5291772105,3)
+        stress[0,1] = float(index_before_stress.split()[5])/10*math.pow(10,9)/math.pow(10,30)/1.60217663*math.pow(10,19)*0.0734985857*math.pow(0.5291772105,3)
+        stress[1,0] = float(index_before_stress.split()[5])/10*math.pow(10,9)/math.pow(10,30)/1.60217663*math.pow(10,19)*0.0734985857*math.pow(0.5291772105,3)
+        stress[0,2] = float(index_before_stress.split()[6])/10*math.pow(10,9)/math.pow(10,30)/1.60217663*math.pow(10,19)*0.0734985857*math.pow(0.5291772105,3)
+        stress[2,1] = float(index_before_stress.split()[7])/10*math.pow(10,9)/math.pow(10,30)/1.60217663*math.pow(10,19)*0.0734985857*math.pow(0.5291772105,3)
+        stress[1,2] = float(index_before_stress.split()[7])/10*math.pow(10,9)/math.pow(10,30)/1.60217663*math.pow(10,19)*0.0734985857*math.pow(0.5291772105,3)
 
         # We can save the forces_population1_X.dat and pressures_population1_X.dat files
         force_file = os.path.join( ENS_FOLDER + str(POPULATION), "forces_population"+ str(POPULATION) +"_{}.dat".format(id_number))
@@ -733,7 +735,7 @@ def Fill_Gamma_Table(POPULATION,GAMMA,PRETRAINED):
     conf_output_file.close()
     return conf_table_gamma
     
-def Send_to_Folders(PREFIX,LOCAL,PATH,folder,ADDRESS,conf_table_gamma,MAX,marker,CALCULATOR):
+def Send_to_Folders(PREFIX,LOCAL,PATH,folder,ADDRESS,conf_table_gamma,MAX,marker):
     current_dir = os.getcwd()
     res = os.system("> scfin/list.dat")
     for i in range(1,len(conf_table_gamma)):

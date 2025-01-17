@@ -45,9 +45,9 @@ PATH = "/projects/academic/ezurek/francesco/"
 ADDRESS = "fbelli@vortex.ccr.buffalo.edu"
 
 T=0      #TEMPERATURE OF THE SIMULATION
-N_RANDOM = 2
+N_RANDOM = 50
 POPULATION=1   #POPULATION OF THE SIMULATION
-POP_MAX=2
+POP_MAX=5
 PREFIX = 'PdCuH_'  #PREFIX OF THE DYNAMICAL MATRICES
 MATDYN = PREFIX + str(POPULATION-1) + '.dyn' #NAME OF THE MATRICES
 SUPERCELL = (2,2,2) 
@@ -59,7 +59,7 @@ MAX_KA = 500
 MIMIM_STRUCTURE = False
 
 MLIP_PATH = '/projects/academic/ezurek/francesco/mlip-2-master/bin/mlp'
-GAMMA = 2
+GAMMA = 200
 marker = "PdCuH"    #str(os.urandom(2).hex())    
 folder = os.getcwd().split(PATH)[-1] + "/SSCHA"
 TIMER  = 120
@@ -167,14 +167,14 @@ while POPULATION < POP_MAX:
         
     ##################################################################################
     #PREPARES CFG EMPTY FILES
-    atom_type_table = fc.Generate_CFG(POPULATION,ENS_FOLDER,atom_type_table)
+    if GAMMA > 0: atom_type_table = fc.Generate_CFG(POPULATION,ENS_FOLDER,atom_type_table)
     ##########################################################################################################################
     
     ##################################################################################
     #LOADS AND SUBMIT JOBS ON THE CLUSTER
     
     #CHECKS MINDIST JUST TO BE SURE NOTHING IS GOING WRONG
-    fc.MTP_CALC_GRADE(POPULATION,MLIP_PATH,PRETRAINED)
+    if GAMMA > 0: fc.MTP_CALC_GRADE(POPULATION,MLIP_PATH,PRETRAINED)
     print("DONE")
    #####################################################################################
   
@@ -182,7 +182,8 @@ while POPULATION < POP_MAX:
     
     print("creating the gamma table") 
     ###################################################################################
-    conf_table_gamma = fc.Fill_Gamma_Table(POPULATION,GAMMA,PRETRAINED)
+    if GAMMA > 0: conf_table_gamma = fc.Fill_Gamma_Table(POPULATION,GAMMA,PRETRAINED)
+    else: conf_table_gamma = []
     #########################################################################################
    
     
@@ -224,7 +225,7 @@ while POPULATION < POP_MAX:
     
     #As written, we must convert the total energy of the supercell in Ry, the forces in Ry/Bohr, and the stress in Ry/Bohr^3. Luckily quantum espresso already gives these quantities in the correct units, but be careful when using different calculators. This problem does not arise when using automatic calculators, as the SSCHA and ASE will cooperate to convert the units to the correct one. Now we will parse the Quantum ESPRESSO output looking for the energy, the forces, and the stress tensor.
     if CALCULATOR == "ESPRESSO": energies = fc.read_SCF(POPULATION,ENS_FOLDER,PREFIX,N_RANDOM)
-    if CALCULATOR == "VASP": energies = fc.read_POSCAR(POPULATION,ENS_FOLDER,PREFIX,N_RANDOM,saved_ordering)  
+    if CALCULATOR == "VASP": energies = fc.read_OUTCAR(POPULATION,ENS_FOLDER,PREFIX,N_RANDOM,saved_ordering)  
     print("DONE")
     ########################################################################################################################################################
     
@@ -233,7 +234,7 @@ while POPULATION < POP_MAX:
     #########################################################################################################################################################
     #ROUTINE TO GO FROM SSCHA TMP FILE TO MLIP CFG FILE
     
-    if TRAINED_FLAG == False:   
+    if TRAINED_FLAG == False and GAMMA > 0:   
         fc.Compile_Trainingset(POPULATION,ENS_FOLDER,atom_type_table,conf_table_gamma)
     ##############################################################################################################################################################################
     
@@ -256,7 +257,8 @@ while POPULATION < POP_MAX:
     #ROUTINE TO GO FROM SSCHA TMP FILE TO MLIP CFG FILE
     
 
-    TOTAL_NUMBER_OF_MLIP_CONF = fc.read_CFG(POPULATION,ENS_FOLDER,PREFIX,conf_table_gamma,energies)
+    if GAMMA > 0: TOTAL_NUMBER_OF_MLIP_CONF = fc.read_CFG(POPULATION,ENS_FOLDER,PREFIX,conf_table_gamma,energies)
+    else: TOTAL_NUMBER_OF_MLIP_CONF = 0
     ######################################################################################################################################################################
     
         
@@ -281,7 +283,7 @@ while POPULATION < POP_MAX:
     
     minimizer.kong_liu_ratio = KL_VAR# Usually 0.5 is a good value
     
-    minimizer.meaningful_factor = 0.0001
+    minimizer.meaningful_factor = 0.000000001
     minimizer.max_ka = MAX_KA
     #minimizer.minimization_algorithm = "cgrf"
     
