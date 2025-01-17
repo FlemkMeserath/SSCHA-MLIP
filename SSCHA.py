@@ -183,7 +183,10 @@ while POPULATION < POP_MAX:
     print("creating the gamma table") 
     ###################################################################################
     if GAMMA > 0: conf_table_gamma = fc.Fill_Gamma_Table(POPULATION,GAMMA,PRETRAINED)
-    else: conf_table_gamma = []
+    else: 
+        conf_table_gamma = []
+        for i in range(0,N_RANDOM):
+            conf_table_gamma.append([i+1,1])
     #########################################################################################
    
     
@@ -283,7 +286,7 @@ while POPULATION < POP_MAX:
     
     minimizer.kong_liu_ratio = KL_VAR# Usually 0.5 is a good value
     
-    minimizer.meaningful_factor = 0.000000001
+    minimizer.meaningful_factor = 0.0000001
     minimizer.max_ka = MAX_KA
     #minimizer.minimization_algorithm = "cgrf"
     

@@ -465,7 +465,6 @@ def read_OUTCAR(POPULATION,ENS_FOLDER,PREFIX,N_RANDOM,saved_ordering):
                 if lines[i].split()[0] == "in" and lines[i].split()[1] == "kB": index_before_stress = lines[i]
 
 
-        print(saved_ordering)
         for i in range(nat):
             forces[i, :] = [float(x)*0.0734985857*0.5029177210544 for x in force_lines[saved_ordering[i]].split()[-3:]] # Get the last three number from the line containing the force
 
