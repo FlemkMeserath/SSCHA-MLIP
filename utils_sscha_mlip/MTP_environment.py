@@ -387,7 +387,7 @@ class MTP_Environment:
                 ENERGY_FLAG = True
                 fields_energy=line.split()
                 if fields_energy[0] != "Energy" and fields_energy[0] != "PlusStress:":
-                    energy = float(fields_energy[0]/self.__Ry_to_eV__)
+                    energy = float(fields_energy[0])/self.__Ry_to_eV__
         #GETS PRESSURES AND STORES ######################################################################################
             if line.find("PlusStress:") != -1 or PRESSURE_FLAG == True:
                 ENERGY_FLAG = False
