@@ -1,0 +1,7 @@
+Library to handle Moment Tensor Potential through the Stochastic Self Consistent harmonic approximation
+The scripts folder contains the scripts to execute the code.
+SSCHA.py         contains the main workflow for the SSCHA + MLIP automated protocol
+potential.mtp    represents an example of Moment Tensor potential of level 10
+utils.py         contains the input scripts for the first principle calculations and the cluster handling.
+
+To run the program correctly, place the SSCHA.py, the potential.mtp, the Pseudo folder and the utils file in a single folder.
