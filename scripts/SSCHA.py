@@ -56,7 +56,7 @@ folder     = os.getcwd() + "/SSCHA"
 header = utils.SCF_FILE
 
 CALCULATOR = "ESPRESSO"   #"ESPRESSO"
-ADDRESS    = "fbelli@vortex.ccr.buffalo.edu"
+ADDRESS    = "Your cluster address "
 marker     = "PdCuH"    #str(os.urandom(2).hex())    
 Submitter  = Cluster_Management(PREFIX,POPULATION,ENS_FOLDER,ADDRESS,folder, marker,N_RANDOM)
 Submitter.base_script_VASP = utils.base_script_VASP
