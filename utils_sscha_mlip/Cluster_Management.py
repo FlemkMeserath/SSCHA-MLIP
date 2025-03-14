@@ -149,7 +149,7 @@ class Cluster_Management:
     def Send_to_Folders(self,conf_table_gamma):
         current_dir = os.getcwd()
         res = os.system("> scfin/list.dat")
-        for i in range(1,len(conf_table_gamma)):
+        for i in range(0,len(conf_table_gamma)):
             tmp_line = "echo '#" +str(i+1) + "# " + self.PREFIX + str(conf_table_gamma[i][0]) + "' >> scfin/list.dat"
             res = os.system(tmp_line)   
     
