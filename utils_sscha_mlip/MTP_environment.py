@@ -1,7 +1,20 @@
 import numpy as np
 import sys, os
 import time
+import multiprocessing
+from multiprocessing import Pool
 
+def run_mlip_calcgrade_nopretrained(path, pop, i):
+# Runs mlip without training set
+    res = os.system(path + ' calc-grade potential.mtp MLIP_'+str(pop)+ '-' + str(i) +'.cfg MLIP_'+str(pop)+ '-' + str(i) +'.cfg MLIP_'+str(pop)+ '-' + str(i) +'.gamma.cfg --als-filename=state-' + str(i) + '.als')
+
+def run_mlip_calcgrade(path, pop, i):
+# Runs mlip with training set
+    res = os.system(path + ' calc-grade potential.mtp trainset.cfg MLIP_'+str(pop)+ '-' + str(i) +'.cfg MLIP_'+str(pop)+ '-' + str(i) +'.gamma.cfg --als-filename=state-' + str(i) + '.als')
+
+def run_mlip_calcefs(path, pop, i):
+# Runs mlip to compute energies, forces, and stresses
+    res = os.system(path + ' calc-efs potential.mtp MLIP_'+str(pop)+ '-' + str(i) +'.cfg MLIP_'+str(pop)+ '-' + str(i) +'.out.cfg')
 
 class MTP_Environment:
 
@@ -18,14 +31,15 @@ class MTP_Environment:
         self.ADDRESS         = address
         self.folder          = fol
         self.LOCAL           = True
-
+        self.TRAIN_FLAG      = "test_ta"
+        self.nprocs          = 1
+        self.delete_tmp_mlip_files = True
 
     ###################################################    
     ###################################################
     ###################################################
     def Generate_CFG(self):
-    # Generates the CFG files used by the MTP 
-        cfg_file = open("MLIP_"+str(self.POPULATION) + ".cfg", "w")
+    # Generates the CFG files used by the MTP; evenly divides number of configurations by nprocs
         directory = self.ENS_FOLDER + str(self.POPULATION)
         FORCE_FILES = True
     
@@ -34,98 +48,137 @@ class MTP_Environment:
         energy_file.close()
     
         print(len(energy_lines),energy_lines)
-    
-        for j in range(1,len(energy_lines)+1):
-            structure_file = open(directory + "/scf_population" + str(self.POPULATION) + "_" + str(j) + ".dat", "r")
-            lines = [l.strip() for l in structure_file.readlines()]
-            structure_file.close()
-    
-            try:
-                force_file = open(directory + "/forces_population" + str(self.POPULATION) + "_" + str(j) + ".dat", "r")
-                force_lines = [l.strip() for l in force_file.readlines()]
-                force_file.close()
-            except: FORCE_FILES = False
-    
-            try:
-                pressure_file = open(directory + "/pressures_population" + str(self.POPULATION) + "_" + str(j) + ".dat", "r")
-                pressure_lines = [l.strip() for l in pressure_file.readlines()]
-                pressure_file.close()
-            except:
-                pressure_lines = [
-                "0.0000 0.0000 0.0000",
-                "0.0000 0.0000 0.0000",
-                "0.0000 0.0000 0.0000",
-                ]
-    
-            SIZE = len(lines)-6
-            cell = np.zeros((3, 3))
-            atoms = np.zeros((SIZE,3))
-            forces = np.zeros((SIZE,3))
-            atm_type = [None] * SIZE
-            pressures = np.zeros((3, 3))
-    
-            for i in range(0,3):
-                cell[i, :] = [float(x) for x in lines[i+1].split()[-3:]]
-    
-            for i in range(0,SIZE):
-                atoms[i, :] = [float(x) for x in lines[i+6].split()[-3:]]
-                atm_type[i] =  lines[i+6].split()[0]
-                if FORCE_FILES == True:
-                    forces[i,:] = [float(x) for x in force_lines[i].split()[-3:]]
-                    forces[i,:] = forces[i, :] * self.__Ry_to_eV__ / self.__Bohr_to_A__
-    
-    
-            for i in atm_type:
-                try: self.atom_type_table[i]
-                except: self.atom_type_table[i] = len(self.atom_type_table)
-    
-    
-            Volume = np.dot(cell[0],np.cross(cell[1], cell[2]))
-    
-            for i in range(0,3):
-    
-                pressures[i, :] = [float(x) for x in pressure_lines[i].split()[-3:]]
-                pressures[i, :] = pressures[i, :] * self.__Ry_to_eV__ / self.__Bohr_to_A__ / self.__Bohr_to_A__ / self.__Bohr_to_A__* Volume
-    
-            cfg_file.write("BEGIN_CFG\n")
-            cfg_file.write(" Size\n")
-            cfg_file.write("{: >5}".format(SIZE) +"\n")
-            cfg_file.write(" Supercell\n")
-            for row in cell:
-                cfg_file.write("    {: >13f} {: >13f} {: >13f}\n".format(*row))
-            cfg_file.write(" AtomData:  id type       cartes_x      cartes_y      cartes_z           fx          fy          fz\n")
-            for i in range(0,len(atoms)):
-                if FORCE_FILES == True:
-                    cfg_file.write("    {: >10}".format(i+1) + "{: >5}".format(self.atom_type_table[atm_type[i]]) + "  {: >13f} {: >13f} {: >13f}".format(*atoms[i,:]) + "  {: >11f} {: >11f} {: >11f}\n".format(*forces[i,:]))
-                else:
-                    cfg_file.write("    {: >10}".format(i+1) + "{: >5}".format(self.atom_type_table[atm_type[i]]) + "  {: >13f} {: >13f} {: >13f}".format(*atoms[i,:]) + "  {: >11f} {: >11f} {: >11f}\n".format(*[0,0,0]))
-            cfg_file.write(" Energy\n")
-            cfg_file.write("     {: >13f}".format(float(energy_lines[j-1])*self.__Ry_to_eV__) +"\n")
-            cfg_file.write(" PlusStress:  xx          yy          zz          yz          xz          xy\n")
-            cfg_file.write("    {: >12f}".format(pressures[0,0]) + "{: >12f}".format(pressures[1,1]) +  "{: >12f}".format(pressures[2,2]))
-            cfg_file.write("{: >12f}".format(pressures[1,2]) + "{: >12f}".format(pressures[0,2]) +  "{: >12f}\n".format(pressures[0,1]))
-            cfg_file.write(" Feature atom_type_table " + str(self.atom_type_table) + "\n")
-            cfg_file.write(" Feature conf_number " + str(j) + "\n")
-            cfg_file.write(" Feature population " + str(self.POPULATION) + "\n")
-            cfg_file.write("END_CFG\n\n")
-        cfg_file.close()
-        
-        
+
+        configurations_list = list(range(1,len(energy_lines)+1))
+        configurations_array = np.array(configurations_list)
+        split_configurations_array = np.array_split(configurations_array, self.nprocs)
+
+        for n in range(0, len(split_configurations_array)):
+            #print(split_configurations_array[n].tolist())
+            cfg_file = open("MLIP_"+str(self.POPULATION) + "-" + str(n) + ".cfg", "w")
+            for j in split_configurations_array[n].tolist():
+                #print(j)
+                structure_file = open(directory + "/scf_population" + str(self.POPULATION) + "_" + str(j) + ".dat", "r")
+                lines = [l.strip() for l in structure_file.readlines()]
+                structure_file.close()
+
+                try:
+                    force_file = open(directory + "/forces_population" + str(self.POPULATION) + "_" + str(j) + ".dat", "r")
+                    force_lines = [l.strip() for l in force_file.readlines()]
+                    force_file.close()
+                except: FORCE_FILES = False
+
+                try:
+                    pressure_file = open(directory + "/pressures_population" + str(self.POPULATION) + "_" + str(j) + ".dat", "r")
+                    pressure_lines = [l.strip() for l in pressure_file.readlines()]
+                    pressure_file.close()
+                except:
+                    pressure_lines = [
+                    "0.0000 0.0000 0.0000",
+                    "0.0000 0.0000 0.0000",
+                    "0.0000 0.0000 0.0000",
+                    ]
+
+                SIZE = len(lines)-6
+                cell = np.zeros((3, 3))
+                atoms = np.zeros((SIZE,3))
+                forces = np.zeros((SIZE,3))
+                atm_type = [None] * SIZE
+                pressures = np.zeros((3, 3))
+
+                for i in range(0,3):
+                    cell[i, :] = [float(x) for x in lines[i+1].split()[-3:]]
+
+                for i in range(0,SIZE):
+                    atoms[i, :] = [float(x) for x in lines[i+6].split()[-3:]]
+                    atm_type[i] =  lines[i+6].split()[0]
+                    if FORCE_FILES == True:
+                        forces[i,:] = [float(x) for x in force_lines[i].split()[-3:]]
+                        forces[i,:] = forces[i, :] * self.__Ry_to_eV__ / self.__Bohr_to_A__
 
 
+                for i in atm_type:
+                    try: self.atom_type_table[i]
+                    except: self.atom_type_table[i] = len(self.atom_type_table)
+
+
+                Volume = np.dot(cell[0],np.cross(cell[1], cell[2]))
+
+                for i in range(0,3):
+
+                    pressures[i, :] = [float(x) for x in pressure_lines[i].split()[-3:]]
+                    pressures[i, :] = pressures[i, :] * self.__Ry_to_eV__ / self.__Bohr_to_A__ / self.__Bohr_to_A__ / self.__Bohr_to_A__* Volume
+
+                cfg_file.write("BEGIN_CFG\n")
+                cfg_file.write(" Size\n")
+                cfg_file.write("{: >5}".format(SIZE) +"\n")
+                cfg_file.write(" Supercell\n")
+                for row in cell:
+                    cfg_file.write("    {: >13f} {: >13f} {: >13f}\n".format(*row))
+                cfg_file.write(" AtomData:  id type       cartes_x      cartes_y      cartes_z           fx          fy          fz\n")
+                for i in range(0,len(atoms)):
+                    if FORCE_FILES == True:
+                        cfg_file.write("    {: >10}".format(i+1) + "{: >5}".format(self.atom_type_table[atm_type[i]]) + "  {: >13f} {: >13f} {: >13f}".format(*atoms[i,:]) + "  {: >11f} {: >11f} {: >11f}\n".format(*forces[i,:]))
+                    else:
+                        cfg_file.write("    {: >10}".format(i+1) + "{: >5}".format(self.atom_type_table[atm_type[i]]) + "  {: >13f} {: >13f} {: >13f}".format(*atoms[i,:]) + "  {: >11f} {: >11f} {: >11f}\n".format(*[0,0,0]))
+                cfg_file.write(" Energy\n")
+                cfg_file.write("     {: >13f}".format(float(energy_lines[j-1])*self.__Ry_to_eV__) +"\n")
+                cfg_file.write(" PlusStress:  xx          yy          zz          yz          xz          xy\n")
+                cfg_file.write("    {: >12f}".format(pressures[0,0]) + "{: >12f}".format(pressures[1,1]) +  "{: >12f}".format(pressures[2,2]))
+                cfg_file.write("{: >12f}".format(pressures[1,2]) + "{: >12f}".format(pressures[0,2]) +  "{: >12f}\n".format(pressures[0,1]))
+                cfg_file.write(" Feature atom_type_table " + str(self.atom_type_table) + "\n")
+                cfg_file.write(" Feature conf_number " + str(j) + "\n")
+                cfg_file.write(" Feature population " + str(self.POPULATION) + "\n")
+                cfg_file.write("END_CFG\n\n")
+            cfg_file.close()
+
+        with open('MLIP_' + str(self.POPULATION) + '.cfg', 'w') as combined_mlip_file:
+            for i in range(0, self.nprocs):
+                with open('MLIP_' + str(self.POPULATION) + '-' + str(i) + '.cfg', 'r') as part_mlip_file:
+                    combined_mlip_file.write(part_mlip_file.read())
+        combined_mlip_file.close()
 
 
     ###################################################    
     ###################################################
     ###################################################        
+
+
+    ###################################################
+    ###################################################
+    ###################################################
     def Calc_GRADE(self):
-    #calculates the grade for the generation of the trainingset
+    #calculates the grade for the generation of the training set; spawns 'nprocs' number of processes for divided MLIP files, then combines the outputted files in proper order
     
         res = os.system(self.MLIP_PATH + ' mindist MLIP_' + str(self.POPULATION) + '.cfg')
         if self.POPULATION == 1 and self.PRETRAINED == False:
-            res = os.system(self.MLIP_PATH + ' calc-grade potential.mtp MLIP_'+str(self.POPULATION)+'.cfg MLIP_'+str(self.POPULATION)+'.cfg MLIP_'+str(self.POPULATION)+'.gamma.cfg')
+            with Pool(self.nprocs) as p:
+                procs_self_tuples_list = []
+                for i in range(0, self.nprocs):
+                    procs_self_tuple = (self.MLIP_PATH, self.POPULATION, i)
+                    procs_self_tuples_list.append(procs_self_tuple)
+                p.starmap(run_mlip_calcgrade_nopretrained, procs_self_tuples_list)
         else:
-            res = os.system(self.MLIP_PATH + ' calc-grade potential.mtp trainset.cfg MLIP_'+str(self.POPULATION)+'.cfg MLIP_'+str(self.POPULATION)+'.gamma.cfg')        
+            with Pool(self.nprocs) as p:
+                procs_self_tuples_list = []
+                for i in range(0, self.nprocs):
+                    procs_self_tuple = (self.MLIP_PATH, self.POPULATION, i)
+                    procs_self_tuples_list.append(procs_self_tuple)
+                p.starmap(run_mlip_calcgrade, procs_self_tuples_list)
+
+        with open('MLIP_' + str(self.POPULATION) + '.gamma.cfg', 'w') as combined_mlip_gamma_file:
+            for i in range(0, self.nprocs):
+                with open('MLIP_' + str(self.POPULATION) + '-' + str(i) + '.gamma.cfg', 'r') as part_mlip_gamma_file:
+                    combined_mlip_gamma_file.write(part_mlip_gamma_file.read())
+        combined_mlip_gamma_file.close()
+
+        if self.delete_tmp_mlip_files is True:
+            for i in range(0,self.nprocs):
+                try:
+                    os.remove('MLIP_'+str(self.POPULATION)+'-'+str(i)+'.gamma.cfg')
+                    os.remove('state-'+str(i)+'.als')
+                except OSError:
+                    pass
         
         
     ###################################################    
@@ -277,7 +330,7 @@ class MTP_Environment:
                     res = os.system('rm ' +  self.folder + '/queue.tmp')            
                 queue_file = open("queue.tmp","r")
                 queue = queue_file.read()
-                still_in_queue = queue.find("test_ta")
+                still_in_queue = queue.find(self.TRAIN_FLAG)   
                 queue_file.close()
                 if still_in_queue != -1:
                     print("Still in queue.")
@@ -292,9 +345,28 @@ class MTP_Environment:
         else:
             res = os.system('cd ' + current_dir)
             res = os.system('cp ' +  self.folder + '/potential.mtp ./')
-        res = os.system(self.MLIP_PATH + ' calc-efs potential.mtp MLIP_'+str(self.POPULATION)+'.cfg MLIP_'+str(self.POPULATION)+'.out.cfg')          
+        #res = os.system(self.MLIP_PATH + ' calc-efs potential.mtp MLIP_'+str(self.POPULATION)+'.cfg MLIP_'+str(self.POPULATION)+'.out.cfg')
+        with Pool(self.nprocs) as p:
+            procs_self_tuples_list = []
+            for i in range(0,self.nprocs):
+                procs_self_tuple = (self.MLIP_PATH, self.POPULATION, i)
+                procs_self_tuples_list.append(procs_self_tuple)
+
+            p.starmap(run_mlip_calcefs, procs_self_tuples_list)
+
+        with open('MLIP_' + str(self.POPULATION) + '.out.cfg', 'w') as combined_mlip_out_file:
+            for i in range(0, self.nprocs):
+                with open('MLIP_' + str(self.POPULATION) + '-' + str(i) + '.out.cfg', 'r') as separate_mlip_out_file:
+                    combined_mlip_out_file.write(separate_mlip_out_file.read())
+        combined_mlip_out_file.close()
             
-        
+        if self.delete_tmp_mlip_files is True:
+            for i in range(0,self.nprocs):
+                try:
+                    os.remove('MLIP_'+str(self.POPULATION)+'-'+str(i)+'.cfg')
+                    os.remove('MLIP_'+str(self.POPULATION)+'-'+str(i)+'.out.cfg')
+                except OSError:
+                    pass
 
 
 
@@ -414,5 +486,4 @@ class MTP_Environment:
         conf_output_file.close()
         return TOTAL_NUMBER_OF_MLIP_CONF        
         
-
 
