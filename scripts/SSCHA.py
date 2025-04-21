@@ -68,7 +68,8 @@ TRAINED_FLAG = False                                                            
 GAMMA        = 200                                                                     #Value of the Gamma selet for the active learning protocol
 MLIP_PATH    = '/projects/academic/ezurek/francesco/mlip-2-master/bin/mlp'             #path to the MLIP2 execitable
 MTP_handler  = MTP_Environment(POPULATION,ENS_FOLDER,GAMMA,ADDRESS,folder,MLIP_PATH)   #Prepares an handler to manage the MLIP interface
-
+MTP_handler.TRAIN_FLAG = "test_tail"
+MTP_handler.nprocs = 1                                                                 #Number of processors for the parallel division of the MLIP calculation 
 
 
 
