@@ -65,7 +65,7 @@ Submitter.base_script_QE = utils.base_script_QE               #Assings some slur
 utils.create_scripts(folder,CALCULATOR)                       #generates folders 
 
 TRAINED_FLAG = False                                                                   #Place true only if the SSCHA run interrupted after the MTP potential has already been trained
-GAMMA        = 200                                                                     #Value of the Gamma selet for the active learning protocol
+GAMMA        = 200                                                                     #Value of the Gamma selet for the active learning protocol. Setting this flag to 0 will ignore the MLIP and use just DFT
 MLIP_PATH    = '/projects/academic/ezurek/francesco/mlip-2-master/bin/mlp'             #path to the MLIP2 execitable
 MTP_handler  = MTP_Environment(POPULATION,ENS_FOLDER,GAMMA,ADDRESS,folder,MLIP_PATH)   #Prepares an handler to manage the MLIP interface
 MTP_handler.TRAIN_FLAG = "test_tail"
