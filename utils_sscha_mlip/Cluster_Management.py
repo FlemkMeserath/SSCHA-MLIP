@@ -6,7 +6,7 @@ import math
 class Cluster_Management:
 
     def __init__(self,prefix,POP=1,ENS_FOL="TMP_gen1",address="./",fol="./SSCHA", marker="SSCHA",n_rand=1):
-        self.__Ry_to_eV__    = 13.6057039763
+        self.__Ry_to_eV__    = 13.605693122994
         self.__Bohr_to_A__   = 0.529177210903
         self.__e_charge__    = 1.60217663
         self.POPULATION      = POP
