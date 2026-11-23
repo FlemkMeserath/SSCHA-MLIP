@@ -19,7 +19,7 @@ def run_mlip_calcefs(path, pop, i):
 class MTP_Environment:
 
     def __init__(self,POP=1,ENS_FOL="TMP_gen1",G=1,address="./",fol="./SSCHA",exe_path="./"):
-        self.__Ry_to_eV__    = 13.6057039763
+        self.__Ry_to_eV__    = 13.605693122994
         self.__Bohr_to_A__   = 0.529177210903
         self.POPULATION      = POP
         self.ENS_FOLDER      = ENS_FOL
