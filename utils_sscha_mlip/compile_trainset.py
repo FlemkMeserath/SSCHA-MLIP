@@ -2,8 +2,9 @@ import sys
 import numpy as np
 
 def Compile_Trainingset(trainset_file,ENS_FOLDER,POPULATION):
-    __Ry_to_eV__  =  13.6057039763 
-    __Bohr_to_A__ = 0.529177249
+    __Ry_to_eV__  =  13.605693122994 
+    __Bohr_to_A__ =  0.529177210903
+    
     atom_type_table = {} 
  
  
